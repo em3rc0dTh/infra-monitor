@@ -203,9 +203,11 @@ async def lifespan(app: FastAPI):
     async with SessionLocal() as db:
         result = await db.execute(select(User).filter(User.username == settings.ADMIN_USERNAME))
         if not result.scalars().first():
+            print(f"--- CREATING DEFAULT ADMIN: {settings.ADMIN_USERNAME} ---")
             admin = User(username=settings.ADMIN_USERNAME, hashed_password=get_password_hash(settings.ADMIN_PASSWORD))
             db.add(admin)
             await db.commit()
+            print("--- ADMIN CREATED SUCCESSFULLY ---")
         
         # Start monitors for all active targets
         result = await db.execute(select(Target).filter(Target.active))
