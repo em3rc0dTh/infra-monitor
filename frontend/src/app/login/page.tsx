@@ -16,7 +16,13 @@ export default function LoginPage() {
     setLoading(true)
     setError('')
     try {
-      const { data } = await api.post('/token', { username, password })
+      const formData = new URLSearchParams();
+      formData.append('username', username);
+      formData.append('password', password);
+
+      const { data } = await api.post('/token', formData, {
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
+      });
       localStorage.setItem('token', data.access_token)
       router.push('/dashboard')
     } catch (err: any) {
