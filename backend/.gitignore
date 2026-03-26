@@ -1,0 +1,21 @@
+# Python / Venv
+venv/
+.venv/
+env/
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Data / SQLite
+*.db
+infra_monitor.db
+
+# Secrets
+.env
+
+# Others
+.vscode/
+.idea/
+tmp/
+*.log
+test_n8n.py
