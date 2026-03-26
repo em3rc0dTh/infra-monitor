@@ -7,8 +7,8 @@ class Settings(BaseSettings):
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 7 # 7 days
     
-    # DB Settings
-    DATABASE_URL: str = "sqlite+aiosqlite:///./infra_monitor.db"
+    # DB Settings (Usar ruta absoluta completa para Docker)
+    DATABASE_URL: str = "sqlite+aiosqlite:////app/infra_monitor.db"
     
     # n8n Settings
     N8N_EMAIL_WEBHOOK: str = "http://148.116.105.178/n8n/webhook/send-email"
