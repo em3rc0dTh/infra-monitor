@@ -21,7 +21,7 @@ export default function TargetDetailPage() {
    const [editEmail, setEditEmail] = useState("");
 
    const fetchData = async () => {
-      if (!id) return;
+      if (!id || id === "undefined") return;
       try {
          const [{ data: tData }, { data: lData }] = await Promise.all([
             api.get(`/targets/${id}`),
@@ -40,9 +40,8 @@ export default function TargetDetailPage() {
          if (Array.isArray(lData)) {
             setLogs(lData);
          }
-      } catch (err) {
-         console.error(err);
-         // router.push('/dashboard');
+      } catch (err: any) {
+         console.error("Fetch Data Error:", err);
       } finally {
          setLoading(false);
       }
@@ -97,6 +96,15 @@ export default function TargetDetailPage() {
    if (loading) return (
       <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex items-center justify-center">
          <Clock className="w-10 h-10 text-indigo-600 animate-spin" />
+      </div>
+   );
+
+   if (!target) return (
+      <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex flex-col items-center justify-center p-10">
+         <AlertCircle className="w-12 h-12 text-rose-500 mb-4" />
+         <h2 className="text-xl font-black text-slate-900 dark:text-white mb-2">Error al cargar datos</h2>
+         <p className="text-slate-500 text-center max-w-sm mb-8">No se pudo encontrar la información del servidor. Verifica la ID o tu conexión.</p>
+         <button onClick={() => router.push('/dashboard')} className="px-6 py-3 bg-slate-900 dark:bg-white text-white dark:text-black font-bold rounded-2xl transition-all hover:scale-105 active:scale-95">Volver al Dashboard</button>
       </div>
    );
 

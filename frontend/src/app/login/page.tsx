@@ -16,17 +16,19 @@ export default function LoginPage() {
     setLoading(true)
     setError('')
     try {
-      const formData = new URLSearchParams();
-      formData.append('username', username);
-      formData.append('password', password);
-
-      const { data } = await api.post('/token', formData, {
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
+      const { data } = await api.post('/token', {
+        username,
+        password
       });
       localStorage.setItem('token', data.access_token)
       router.push('/dashboard')
     } catch (err: any) {
-      setError(err.response?.data?.detail || 'Error al iniciar sesión')
+      const detail = err.response?.data?.detail;
+      if (Array.isArray(detail)) {
+        setError(detail[0]?.msg || 'Error de validación');
+      } else {
+        setError(detail || 'Error al iniciar sesión');
+      }
     } finally {
       setLoading(false)
     }

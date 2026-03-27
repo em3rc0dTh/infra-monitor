@@ -44,8 +44,8 @@ async def probe(url: str, timeout: float = 10.0) -> dict:
         return {"ok": r.status_code < 500, "status": r.status_code, "ms": ms}
     except httpx.TimeoutException:
         return {"ok": False, "status": "timeout", "ms": None}
-    except Exception as e:
-        return {"ok": False, "status": "error", "ms": str(e)[:50]}
+    except Exception:
+        return {"ok": False, "status": "error", "ms": None}
 
 def diagnose(ip_ok: bool, dom_ok: bool) -> dict:
     if ip_ok and dom_ok:
@@ -66,7 +66,8 @@ async def send_webhooks(target: Target, entry: dict):
         try:
             async with httpx.AsyncClient() as client:
                 await client.post(target.webhook_url, json=entry, timeout=8)
-        except Exception: pass
+        except Exception:
+            pass
 
     # n8n Email Webhook for alerts/recovery
     diag = entry["diag"]
@@ -120,7 +121,8 @@ async def send_webhooks(target: Target, entry: dict):
     try:
         async with httpx.AsyncClient() as client:
             await client.post(N8N_EMAIL_WEBHOOK, json=payload, timeout=8)
-    except Exception: pass
+    except Exception:
+        pass
 
 async def broadcast(event: str, data: dict):
     msg = f"event: {event}\ndata: {json.dumps(data)}\n\n"
@@ -270,14 +272,16 @@ async def create_target(req: TargetCreate, db: AsyncSession = Depends(get_db), c
 async def get_target(target_id: int, db: AsyncSession = Depends(get_db), current_user: User = Depends(get_current_user)):
     result = await db.execute(select(Target).filter(Target.id == target_id))
     target = result.scalars().first()
-    if not target: raise HTTPException(404, "Target not found")
+    if not target:
+        raise HTTPException(404, "Target not found")
     return target
 
 @app.put("/targets/{target_id}", response_model=TargetInDB)
 async def update_target(target_id: int, req: TargetUpdate, db: AsyncSession = Depends(get_db), current_user: User = Depends(get_current_user)):
     result = await db.execute(select(Target).filter(Target.id == target_id))
     target = result.scalars().first()
-    if not target: raise HTTPException(404, "Target not found")
+    if not target:
+        raise HTTPException(404, "Target not found")
     
     update_data = req.dict(exclude_unset=True)
     for k, v in update_data.items():
