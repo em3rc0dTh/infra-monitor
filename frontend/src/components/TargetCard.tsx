@@ -53,7 +53,7 @@ const STYLES = {
 };
 
 export default function TargetCard({ target, latest, onClick }: Props) {
-  const level = latest?.diag.level ?? "idle";
+  const level = latest?.diag?.level ?? "idle";
   const s = STYLES[level];
 
   return (
@@ -90,7 +90,7 @@ export default function TargetCard({ target, latest, onClick }: Props) {
               <span className="text-[10px] uppercase font-semibold text-slate-400 tracking-wide">Servidor IP</span>
            </div>
            <p className="text-sm font-mono font-medium text-slate-800 dark:text-slate-200 truncate">{target.ip}</p>
-           <p className="text-[10px] mt-1 font-medium">{latest?.ip.ok ? "🟢 En línea" : "🔴 Fuera de línea"}</p>
+           <p className="text-[10px] mt-1 font-medium">{latest?.ip?.ok ? "🟢 En línea" : "🔴 Fuera de línea"}</p>
         </div>
         <div className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm rounded-2xl p-3 border border-slate-100 dark:border-slate-800">
            <div className="flex items-center gap-2 mb-1.5">
@@ -98,7 +98,7 @@ export default function TargetCard({ target, latest, onClick }: Props) {
               <span className="text-[10px] uppercase font-semibold text-slate-400 tracking-wide">Dominio</span>
            </div>
            <p className="text-sm font-mono font-medium text-slate-800 dark:text-slate-200 truncate">{target.domain}</p>
-           <p className="text-[10px] mt-1 font-medium">{latest?.domain.ok ? "🟢 En línea" : "🔴 Fuera de línea"}</p>
+           <p className="text-[10px] mt-1 font-medium">{latest?.domain?.ok ? "🟢 En línea" : "🔴 Fuera de línea"}</p>
         </div>
       </div>
 
@@ -106,7 +106,7 @@ export default function TargetCard({ target, latest, onClick }: Props) {
          <div className="flex items-center gap-2">
             <Zap className="w-4 h-4 text-indigo-500" />
             <span className="text-xs font-bold text-slate-900 dark:text-slate-100">
-              {latest?.domain.ms ? `${latest.domain.ms}ms` : '—'}
+              {latest?.domain?.ms ? `${latest.domain.ms}ms` : '—'}
             </span>
             <span className="text-[10px] text-slate-400 font-medium">latencia</span>
          </div>

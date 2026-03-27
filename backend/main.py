@@ -166,7 +166,8 @@ async def monitor_target(target_id: int):
             diag = diagnose(ip_res["ok"], dom_res["ok"])
             now = datetime.now(timezone.utc)
             ts_iso = now.isoformat().replace("+00:00", "Z") # Ensure browser treats as UTC
-            if not ts_iso.endswith("Z"): ts_iso += "Z"
+            if not ts_iso.endswith("Z"):
+                ts_iso += "Z"
 
             # 3. Save Log
             async with SessionLocal() as db:
@@ -286,10 +287,8 @@ async def get_targets(db: AsyncSession = Depends(get_db), current_user: User = D
         if latest_log:
             t_data.latest_log = {
                 "ts": latest_log.ts.isoformat() + ("Z" if not latest_log.ts.tzinfo else ""),
-                "ip_ok": latest_log.ip_ok,
-                "ip_ms": latest_log.ip_ms,
-                "domain_ok": latest_log.domain_ok,
-                "domain_ms": latest_log.domain_ms,
+                "ip": {"ok": latest_log.ip_ok, "status": latest_log.ip_status, "ms": latest_log.ip_ms},
+                "domain": {"ok": latest_log.domain_ok, "status": latest_log.domain_status, "ms": latest_log.domain_ms},
                 "diag": {
                     "level": latest_log.diag_level,
                     "title": latest_log.diag_title,
