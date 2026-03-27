@@ -24,6 +24,7 @@ class TargetUpdate(TargetBase):
 
 class TargetInDB(TargetBase):
     id: int
+    latest_log: Optional[dict] = None
 
     class Config:
         from_attributes = True

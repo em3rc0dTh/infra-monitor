@@ -27,6 +27,18 @@ export default function DashboardPage() {
     try {
       const { data } = await api.get('/targets');
       setTargets(data);
+      
+      // Populate initial latents from database state
+      const initialLatents: Record<number, any> = {};
+      data.forEach((t: any) => {
+        if (t.latest_log) {
+          initialLatents[t.id] = {
+            id: t.id,
+            ...t.latest_log
+          };
+        }
+      });
+      setLatents(prev => ({ ...prev, ...initialLatents }));
     } catch (err) {
       console.error(err);
     } finally {

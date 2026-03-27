@@ -140,60 +140,76 @@ async def broadcast(event: str, data: dict):
 
 async def monitor_target(target_id: int):
     prev_level = "ok"
+    print(f"--- STARTING MONITOR TASK FOR TARGET {target_id} ---")
     while True:
-        async with SessionLocal() as db:
-            result = await db.execute(select(Target).filter(Target.id == target_id))
-            target = result.scalars().first()
-            if not target or not target.active:
-                break
-            
+        try:
+            # 1. Fetch Target (Separate session to minimize locks)
+            async with SessionLocal() as db:
+                result = await db.execute(select(Target).filter(Target.id == target_id))
+                target = result.scalars().first()
+                if not target or not target.active:
+                    print(f"--- STOPPING MONITOR TASK {target_id} ---")
+                    break
+                
+                target_name = target.name
+                target_ip = target.ip
+                target_domain = target.domain
+                target_interval = max(target.interval, 10) # Failsafe
+                target_notification_email = target.notification_email
+                target_webhook_url = target.webhook_url
+
+            # 2. Probe (Outside DB lock)
             ip_res, dom_res = await asyncio.gather(
-                probe(target.ip), 
-                probe(target.domain if target.domain.startswith("http") else f"https://{target.domain}")
+                probe(target_ip), 
+                probe(target_domain if target_domain.startswith("http") else f"https://{target_domain}")
             )
             diag = diagnose(ip_res["ok"], dom_res["ok"])
-            
             now = datetime.now(timezone.utc)
-            log_entry = Log(
-                target_id=target.id,
-                ts=now,
-                ip_ok=ip_res["ok"],
-                ip_status=str(ip_res["status"]),
-                ip_ms=ip_res["ms"],
-                domain_ok=dom_res["ok"],
-                domain_status=str(dom_res["status"]),
-                domain_ms=dom_res["ms"],
-                diag_level=diag["level"],
-                diag_title=diag["title"],
-                diag_body=diag["body"]
-            )
-            db.add(log_entry)
-            await db.commit()
+            ts_iso = now.isoformat().replace("+00:00", "Z") # Ensure browser treats as UTC
+            if not ts_iso.endswith("Z"): ts_iso += "Z"
+
+            # 3. Save Log
+            async with SessionLocal() as db:
+                log_entry = Log(
+                    target_id=target_id,
+                    ts=now,
+                    ip_ok=ip_res["ok"], ip_status=str(ip_res["status"]), ip_ms=ip_res["ms"],
+                    domain_ok=dom_res["ok"], domain_status=str(dom_res["status"]), domain_ms=dom_res["ms"],
+                    diag_level=diag["level"], diag_title=diag["title"], diag_body=diag["body"]
+                )
+                db.add(log_entry)
+                await db.commit()
             
-            event_data = {
-                "id": target.id,
-                "ts": now.isoformat(),
-                "ip": ip_res,
-                "domain": dom_res,
-                "diag": diag,
-            }
+            # 4. Broadcast & Webhooks
+            event_data = {"id": target_id, "ts": ts_iso, "ip": ip_res, "domain": dom_res, "diag": diag}
             await broadcast("check", event_data)
             
-            # Send Webhook if level changed or is critical
             if diag["level"] != prev_level or diag["level"] == "crit":
                 if diag["level"] != "ok" or prev_level != "ok":
                     entry_for_webhook = {
-                        "ts": now.isoformat(),
+                        "ts": ts_iso,
                         "ip_ok": ip_res["ok"], "ip_status": str(ip_res["status"]), "ip_ms": ip_res["ms"],
                         "domain_ok": dom_res["ok"], "domain_status": str(dom_res["status"]), "domain_ms": dom_res["ms"],
                         "diag": diag
                     }
-                    asyncio.create_task(send_webhooks(target, entry_for_webhook))
+                    # Small dummy class to pass target data without active DB session
+                    from types import SimpleNamespace
+                    dummy_target = SimpleNamespace(
+                        name=target_name, 
+                        webhook_url=target_webhook_url, 
+                        notification_email=target_notification_email,
+                        ip=target_ip,
+                        domain=target_domain
+                    )
+                    asyncio.create_task(send_webhooks(dummy_target, entry_for_webhook))
             
+            print(f"--- CHECK COMPLETED: {target_name} ({diag['level']}) ---")
             prev_level = diag["level"]
-            interval = target.interval
-        
-        await asyncio.sleep(interval)
+            await asyncio.sleep(target_interval)
+
+        except Exception as e:
+            print(f"--- CRITICAL ERROR IN MONITOR TASK {target_id}: {e} ---")
+            await asyncio.sleep(30) # Cool down on error
 
 # ── Lifecycle ─────────────────────────────────────────────────────────────────
 
@@ -254,8 +270,35 @@ async def login_for_access_token(req: LoginRequest, db: AsyncSession = Depends(g
 
 @app.get("/targets", response_model=List[TargetInDB])
 async def get_targets(db: AsyncSession = Depends(get_db), current_user: User = Depends(get_current_user)):
+    # Fetch targets with their latest log entry
     result = await db.execute(select(Target))
-    return result.scalars().all()
+    targets = result.scalars().all()
+    
+    targets_out = []
+    for t in targets:
+        # Get latest log for this target
+        log_res = await db.execute(
+            select(Log).filter(Log.target_id == t.id).order_by(Log.ts.desc()).limit(1)
+        )
+        latest_log = log_res.scalars().first()
+        
+        t_data = TargetInDB.from_orm(t)
+        if latest_log:
+            t_data.latest_log = {
+                "ts": latest_log.ts.isoformat() + ("Z" if not latest_log.ts.tzinfo else ""),
+                "ip_ok": latest_log.ip_ok,
+                "ip_ms": latest_log.ip_ms,
+                "domain_ok": latest_log.domain_ok,
+                "domain_ms": latest_log.domain_ms,
+                "diag": {
+                    "level": latest_log.diag_level,
+                    "title": latest_log.diag_title,
+                    "body": latest_log.diag_body
+                }
+            }
+        targets_out.append(t_data)
+        
+    return targets_out
 
 @app.post("/targets", response_model=TargetInDB)
 async def create_target(req: TargetCreate, db: AsyncSession = Depends(get_db), current_user: User = Depends(get_current_user)):

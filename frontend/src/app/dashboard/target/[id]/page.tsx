@@ -82,10 +82,18 @@ export default function TargetDetailPage() {
 
    const chartData = useMemo(() => {
       return logs.slice().reverse().map(l => ({
-         label: new Date(l.ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+         label: new Date(l.ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
          ms: l.domain_ms
       }));
    }, [logs]);
+
+   const formatDate = (dateStr: string) => {
+      const d = new Date(dateStr);
+      return d.toLocaleString([], { 
+         day: '2-digit', month: '2-digit', year: 'numeric',
+         hour: '2-digit', minute: '2-digit', second: '2-digit'
+      });
+   };
 
    const uptimePercentage = useMemo(() => {
       if (logs.length === 0) return 100;
@@ -231,7 +239,7 @@ export default function TargetDetailPage() {
                            <div key={log.id} className="grid grid-cols-1 md:grid-cols-[140px_1fr_120px] items-center gap-6 p-6 hover:bg-slate-50 dark:hover:bg-slate-800/50 border-b border-slate-100 dark:border-slate-800 transition-colors last:border-b-0">
                               <div className="flex items-center gap-3 text-slate-400 group">
                                  <div className="w-1.5 h-6 rounded-full bg-slate-200 dark:bg-slate-700 group-hover:bg-indigo-400 transition-colors" />
-                                 <span className="font-mono font-bold text-xs">{new Date(log.ts).toLocaleString()}</span>
+                                 <span className="font-mono font-bold text-xs">{formatDate(log.ts)}</span>
                               </div>
                               <div>
                                  <p className="text-sm font-black text-slate-800 dark:text-slate-200">{log.diag_title}</p>
